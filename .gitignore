@@ -1,0 +1,5 @@
+venv/
+src/config/config.yml
+src/scripts/*.zip
+json_example/
+.idea
