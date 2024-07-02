@@ -88,7 +88,7 @@ def add_cert(domain):
 
 
 def download_cert(cert_content, domain, save_path):
-    save_path = os.path.join(save_path, domain)
+    save_path = os.path.join(save_path, f'{domain}.zip')
     FileUtil.bs64_to_zip(cert_content.get('Content'), save_path)
     print(f"下载证书成功,证书已保存到{save_path}")
     FileUtil.unzip(save_path)
@@ -101,6 +101,8 @@ def main():
             print(f"{args.target}证书状态正常,证书到期时间:{current_valid_cert.get('cert_expire_time')}")
             if not args.force:
                 return
+        download_cert(tc_ssl.download_ssl_cert(current_valid_cert.get('cert_id')), args.target, save_path)
+        return
     else:
         add_cert(args.target)
 
