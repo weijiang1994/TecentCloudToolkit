@@ -4,3 +4,4 @@ src/scripts/*.zip
 json_example/
 .idea
 logs/
+.vscode/
