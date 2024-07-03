@@ -8,7 +8,7 @@ import os
 
 import yaml
 
-basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+basedir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 class Config:
@@ -17,7 +17,7 @@ class Config:
 
     @staticmethod
     def load_config():
-        with open(os.path.join(basedir, 'config/config.yml'), 'r', encoding='utf-8') as f:
+        with open(os.path.join(basedir, 'src/config/config.yml'), 'r', encoding='utf-8') as f:
             return yaml.load(f, Loader=yaml.FullLoader)
 
     def get_config(self):

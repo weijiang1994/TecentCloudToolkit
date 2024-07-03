@@ -13,13 +13,15 @@ from src.tencent_cloud.ssl import TencentCloudSSL
 from src.tencent_cloud.dns import TencentCloudDNS
 from src.utils.constants import SSLStatus
 from src.utils.file import FileUtil
+from src.utils.log import LogUtil
+from src.utils import basedir, cfg
 
 
 def get_current_cert_info(domain):
     result = []
     res = tc_ssl.get_cert_list(domain=domain)
     if res.get('TotalCount') == 0:
-        print(f"{domain}未添加证书")
+        logger.write_log(f"{domain}未添加证书")
         return result
     cert_infos = res.get('Certificates')
     for cert_info in cert_infos:
@@ -43,7 +45,7 @@ def add_cert(domain):
     cert_info = tc_ssl.get_ssl_cert_info(cert_id)
     remote_dv_auth = cert_info.get('DvAuthDetail', {}).get('DvAuths')
     if not remote_dv_auth:
-        print(f"添加证书失败,错误信息:{cert_info.get('Response', {}).get('Error', {}).get('Message')}")
+        logger.write_log(f"添加证书失败,错误信息:{cert_info.get('Response', {}).get('Error', {}).get('Message')}")
         return
     remote_dv_auth = remote_dv_auth[0]
     dv_auth_key = remote_dv_auth.get('DvAuthSubDomain')
@@ -59,7 +61,7 @@ def add_cert(domain):
         value=dv_auth_value,
         record_line='默认'
     )
-    print(f"添加证书成功,证书ID:{cert_id},证书状态:{cert_info.get('StatusName')},证书到期时间:{cert_info.get('CertEndTime')}")
+    logger.write_log(f"添加证书成功,证书ID:{cert_id},证书状态:{cert_info.get('StatusName')},证书到期时间:{cert_info.get('CertEndTime')}")
 
     retry_times = 0
     cert_content = {}
@@ -67,16 +69,16 @@ def add_cert(domain):
         try:
             # 验证证书
             verification_content = tc_ssl.complete_cert_verification(cert_id=cert_id)
-            print(f'验证证书成功: {verification_content}')
+            logger.write_log(f'验证证书成功: {verification_content}')
             # 下载证书
             cert_content = tc_ssl.download_ssl_cert(cert_id)
             break
         except Exception as e:
             # 签发需要一段时间，这里等待300秒
-            print(f"下载证书失败,错误信息:{e.args},正在重试...")
+            logger.write_log(f"下载证书失败,错误信息:{e.args},正在重试...")
             retry_times += 1
             if retry_times > 5:
-                print("下载证书失败,重试次数过多,请手动下载证书")
+                logger.write_log("下载证书失败,重试次数过多,请手动下载证书")
                 break
             time.sleep(60)
 
@@ -84,13 +86,13 @@ def add_cert(domain):
     if cert_content:
         download_cert(cert_content, domain, save_path)
     else:
-        print("下载证书失败,请手动下载证书")
+        logger.write_log("下载证书失败,请手动下载证书")
 
 
 def download_cert(cert_content, domain, save_path):
     save_path = os.path.join(save_path, f'{domain}.zip')
     FileUtil.bs64_to_zip(cert_content.get('Content'), save_path)
-    print(f"下载证书成功,证书已保存到{save_path}")
+    logger.write_log(f"下载证书成功,证书已保存到{save_path}")
     FileUtil.unzip(save_path)
 
 
@@ -98,7 +100,9 @@ def main():
     current_valid_certs = get_current_cert_info(args.target)
     for current_valid_cert in current_valid_certs:
         if current_valid_cert.get('status') == SSLStatus.PASS.value:
-            print(f"{args.target}证书状态正常,证书到期时间:{current_valid_cert.get('cert_expire_time')}")
+            logger.write_log(
+                f"{args.target}证书状态正常,证书到期时间:{current_valid_cert.get('cert_expire_time')}"
+            )
             if not args.force:
                 return
         download_cert(tc_ssl.download_ssl_cert(current_valid_cert.get('cert_id')), args.target, save_path)
@@ -117,7 +121,20 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     save_path = args.path
+
+    # 配置文件中的日志保存路径
+    cfg_log_save_path = cfg.get('log').get('save_path')
+    if cfg_log_save_path and os.path.exists(cfg_log_save_path):
+        log_path = cfg_log_save_path
+    else:
+        log_path = os.path.join(basedir,  'logs')
+
+    if not os.path.exists(log_path):
+        os.makedirs(log_path)
+
     if not os.path.exists(save_path):
         os.makedirs(save_path)
+
     tc_ssl = TencentCloudSSL()
+    logger = LogUtil('auto_add_https_cert', os.path.join(log_path, 'auto_add_https_cert.log'))
     main()

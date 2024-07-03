@@ -38,7 +38,6 @@ class FileUtil:
         :param zip_path: zip文件保存路径
         :return: None
         """
-        print(bs64_str)
         zip_str = base64.b64decode(bs64_str, validate=False)
         with open(zip_path, 'wb') as f:
             f.write(zip_str)
