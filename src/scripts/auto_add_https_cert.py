@@ -19,6 +19,7 @@ from src.utils import basedir, cfg
 tc_ssl = TencentCloudSSL()
 logger = None
 save_path = None
+args = None
 
 
 def get_current_cert_info(domain):
@@ -100,11 +101,13 @@ def download_cert(cert_content, domain, save_path):
     FileUtil.unzip(save_path)
 
 
-def main(args, log, path):
+def main(arg, log, path):
     global logger
     logger = log
     global save_path
     save_path = path
+    global args
+    args = arg
     current_valid_certs = get_current_cert_info(args.target)
     for current_valid_cert in current_valid_certs:
         if current_valid_cert.get('status') == SSLStatus.PASS.value:
